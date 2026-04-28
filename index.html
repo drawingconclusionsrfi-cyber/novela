@@ -140,11 +140,11 @@
       </div>
       <div class="setup-box">
         <p>
-          Go to <a href="https://console.groq.com" target="_blank">console.groq.com</a> → Sign up free<br>
-          → Click <strong style="color:var(--accent)">API Keys</strong> → <strong style="color:var(--accent)">Create API Key</strong><br>
-          → Paste your key below (starts with <strong style="color:var(--accent)">gsk_</strong>)
+          Go to <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a> → Sign up<br>
+          → Click <strong style="color:var(--accent)">API Keys</strong> → <strong style="color:var(--accent)">Create Key</strong><br>
+          → Paste your key below (starts with <strong style="color:var(--accent)">sk-ant-</strong>)
         </p>
-        <input class="setup-input" type="password" id="groq-key" placeholder="gsk_..." autocomplete="off" />
+        <input class="setup-input" type="password" id="claude-key" placeholder="sk-ant-..." autocomplete="off" />
       </div>
     </div>
 
@@ -166,6 +166,24 @@
         <input class="setup-input" type="password" id="el-key" placeholder="sk_..." autocomplete="off" />
       </div>
       <p class="setup-note" style="margin-top:6px">No ElevenLabs key? Leave blank — Novela will use your device's built-in voice instead.</p>
+    </div>
+
+    <hr class="divider" />
+
+    <!-- Step 3: Voice ID -->
+    <div class="setup-section">
+      <div class="setup-label">
+        Step 3 — Voice ID
+        <span class="badge free">optional</span>
+      </div>
+      <div class="setup-box">
+        <p>
+          Go to <a href="https://elevenlabs.io/voice-library" target="_blank">elevenlabs.io/voice-library</a><br>
+          → Find a voice you love → Add it → Copy the Voice ID<br>
+          → Paste it below (leave blank to use default voice)
+        </p>
+        <input class="setup-input" type="text" id="voice-id" placeholder="e.g. zWoalRDt5TZrmW4ROIA7" autocomplete="off" />
+      </div>
     </div>
 
     <button class="setup-btn" onclick="saveKeys()">Launch Novela</button>
@@ -211,11 +229,11 @@
 </div>
 <script>
 // ── Constants ─────────────────────────────────────────────────────
-const GROQ_URL   = 'https://api.groq.com/openai/v1/chat/completions';
-const GROQ_MODEL = 'llama-3.3-70b-versatile';
+const CLAUDE_URL = 'https://api.anthropic.com/v1/messages';
+const CLAUDE_MODEL = 'claude-haiku-4-5-20251001';
 // ElevenLabs voice: Serena — warm African American female voice
 const EL_VOICE_ID = 'zWoalRDt5TZrmW4ROIA7';
-const EL_TTS_URL  = `https://api.elevenlabs.io/v1/text-to-speech/${EL_VOICE_ID}`;
+// EL_TTS_URL is built dynamically using voiceId
 
 const SYSTEM_PROMPT = `You are Novela, an elegant and precise personal AI assistant.
 
@@ -252,49 +270,55 @@ Be warm, concise, and refined. Never invent contact details.`;
 // ── State ─────────────────────────────────────────────────────────
 let history      = [];
 let pendingAction= null;
-let groqKey      = '';
+let claudeKey    = '';
 let elKey        = '';
+let voiceId      = '';
 let isMuted      = false;
 let currentAudio = null;
 let lastText     = '';
 
 // ── Init ──────────────────────────────────────────────────────────
 function init() {
-  groqKey = localStorage.getItem('novela_groq_key') || '';
-  elKey   = localStorage.getItem('novela_el_key')   || '';
-  isMuted = localStorage.getItem('novela_muted') === 'true';
+  claudeKey = localStorage.getItem('novela_claude_key') || '';
+  elKey     = localStorage.getItem('novela_el_key')   || '';
+  voiceId   = localStorage.getItem('novela_voice_id') || EL_VOICE_ID;
+  isMuted   = localStorage.getItem('novela_muted') === 'true';
   updateMuteIcon();
-  if (groqKey) {
+  if (claudeKey) {
     showMain();
   }
 }
 
 function saveKeys() {
-  const g = document.getElementById('groq-key').value.trim();
+  const g = document.getElementById('claude-key').value.trim();
   const e = document.getElementById('el-key').value.trim();
+  const v = document.getElementById('voice-id').value.trim();
   if (!g || g.length < 10) {
-    alert('Please enter your Groq API key (starts with gsk_). It is required for Novela to work.');
+    alert('Please enter your Claude API key (starts with sk-ant-). It is required for Novela to work.');
     return;
   }
-  localStorage.setItem('novela_groq_key', g);
+  localStorage.setItem('novela_claude_key', g);
   if (e) localStorage.setItem('novela_el_key', e);
-  groqKey = g;
-  elKey   = e;
+  if (v) localStorage.setItem('novela_voice_id', v);
+  claudeKey = g;
+  elKey = e;
+  voiceId = v || EL_VOICE_ID;
   showMain();
 }
 
 function showSetup() {
   document.getElementById('setup').style.display = 'flex';
   document.getElementById('main').style.display  = 'none';
-  document.getElementById('groq-key').value = groqKey;
-  document.getElementById('el-key').value   = elKey;
+  document.getElementById('claude-key').value = claudeKey;
+  document.getElementById('el-key').value = elKey;
+  document.getElementById('voice-id').value = voiceId !== EL_VOICE_ID ? voiceId : '';
 }
 
 function showMain() {
   document.getElementById('setup').style.display = 'none';
   document.getElementById('main').style.display  = 'flex';
   const hasVoice = !!elKey;
-  document.getElementById('conn-label').textContent = hasVoice ? 'Groq · ElevenLabs' : 'Groq · device voice';
+  document.getElementById('conn-label').textContent = hasVoice ? 'Claude · ElevenLabs' : 'Claude · device voice';
   document.getElementById('status-dot').classList.add('on');
   setTimeout(() => speak("Hello, I'm Novela. How can I help you today?"), 800);
 }
@@ -319,7 +343,7 @@ async function speak(text) {
 
 async function speakElevenLabs(text) {
   if (currentAudio) { currentAudio.pause(); currentAudio = null; }
-  const resp = await fetch(EL_TTS_URL, {
+  const resp = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -502,18 +526,19 @@ async function sendMessage() {
   const loadMsg = addMsg('<em style="color:var(--muted);font-family:\'Cormorant Garamond\',serif;font-size:15px">Thinking...</em>', 'ai');
   history.push({ role: 'user', content: text });
   try {
-    const resp = await fetch(GROQ_URL, {
+    const resp = await fetch(CLAUDE_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${groqKey}` },
+      headers: { 'Content-Type': 'application/json', 'x-api-key': claudeKey, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({
-        model: GROQ_MODEL,
+        model: CLAUDE_MODEL,
         max_tokens: 1000,
-        messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...history]
+        system: SYSTEM_PROMPT,
+        messages: history
       })
     });
     const d = await resp.json();
     if (d.error) throw new Error(d.error.message);
-    const raw = d.choices[0].message.content;
+    const raw = d.content.filter(c => c.type === 'text').map(c => c.text).join('');
     let parsed;
     try { parsed = JSON.parse(raw.replace(/```json|```/g,'').trim()); }
     catch { parsed = { reply: raw, action: null }; }
