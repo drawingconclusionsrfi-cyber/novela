@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0c0c0f" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Novela" />
+  <title>Novela — Personal Assistant</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="icon" href="icons/icon-192.png" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0c0c0f; --surface: #17171b; --surface2: #1f1f24; --border: #2a2a30;
+      --accent: #c9a96e; --text: #eeeef0; --muted: #7a7a85;
+      --green: #5ecba1; --amber: #e8c06a; --red: #e07070; --blue: #7eb8d4;
+    }
+    html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; -webkit-font-smoothing: antialiased; overscroll-behavior: none; }
+    #app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; max-width: 600px; margin: 0 auto; background: var(--bg); }
+
+    /* Header */
+    #header { padding: 16px 20px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+    .logo-name { font-family: 'Cormorant Garamond', serif; font-size: 24px; font-weight: 500; color: var(--accent); letter-spacing: .04em; }
+    .logo-sub { font-size: 10px; color: var(--muted); letter-spacing: .12em; text-transform: uppercase; font-family: 'DM Mono', monospace; margin-left: 8px; }
+    .hdr-btns { display: flex; align-items: center; gap: 6px; }
+    .hdr-btns span { font-size: 10px; color: var(--muted); font-family: 'DM Mono', monospace; letter-spacing: .08em; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--amber); animation: pulse 2.5s infinite; }
+    .dot.on { background: var(--green); }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+    .icon-btn { background: none; border: none; cursor: pointer; color: var(--muted); padding: 4px; display: flex; align-items: center; transition: color .15s; }
+    .icon-btn:hover { color: var(--accent); }
+    .icon-btn.active { color: var(--accent); }
+
+    /* Setup */
+    #setup { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px 20px; gap: 12px; overflow-y: auto; }
+    #setup h2 { font-family: 'Cormorant Garamond', serif; font-size: 26px; font-weight: 400; color: var(--accent); margin-bottom: 4px; }
+    .setup-section { width: 100%; max-width: 380px; }
+    .setup-label { font-size: 10px; color: var(--muted); font-family: 'DM Mono', monospace; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+    .setup-label .badge { padding: 2px 7px; border-radius: 4px; font-size: 9px; }
+    .badge.required { background: #2a1a0e; color: var(--amber); }
+    .badge.free { background: #0e1e18; color: var(--green); }
+    .setup-box { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-bottom: 4px; }
+    .setup-box p { font-size: 13px; color: var(--text); line-height: 1.8; }
+    .setup-box a { color: var(--accent); text-decoration: none; font-weight: 500; }
+    .setup-box a:hover { text-decoration: underline; }
+    .setup-input { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 11px 14px; font-family: 'DM Mono', monospace; font-size: 13px; color: var(--text); outline: none; transition: border .15s; margin-top: 6px; }
+    .setup-input:focus { border-color: var(--accent); }
+    .setup-input::placeholder { color: var(--muted); }
+    .setup-btn { width: 100%; max-width: 380px; background: var(--accent); color: #0c0c0f; border: none; border-radius: 10px; padding: 13px; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500; cursor: pointer; transition: opacity .15s; margin-top: 4px; }
+    .setup-btn:hover { opacity: .85; }
+    .setup-note { font-size: 11px; color: var(--muted); text-align: center; max-width: 380px; line-height: 1.6; }
+    .divider { width: 100%; max-width: 380px; border: none; border-top: 1px solid var(--border); margin: 4px 0; }
+
+    /* Main */
+    #main { display: none; flex-direction: column; flex: 1; overflow: hidden; }
+    #quickbar { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 14px 20px 0; flex-shrink: 0; }
+    .qbtn { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: 12px; color: var(--muted); text-align: left; transition: all .15s; display: flex; align-items: center; gap: 8px; }
+    .qbtn:hover, .qbtn:active { border-color: var(--accent); color: var(--accent); }
+
+    /* Chat */
+    #chat { flex: 1; overflow-y: auto; padding: 14px 20px; display: flex; flex-direction: column; gap: 10px; -webkit-overflow-scrolling: touch; }
+    .msg { max-width: 90%; padding: 10px 14px; border-radius: 12px; font-size: 14px; line-height: 1.55; }
+    .msg.user { background: var(--surface2); border: 1px solid var(--accent); color: var(--text); align-self: flex-end; border-bottom-right-radius: 3px; }
+    .msg.ai { background: var(--surface); border: 1px solid var(--border); align-self: flex-start; border-bottom-left-radius: 3px; }
+    .msg.system { background: transparent; border: 1px dashed var(--border); color: var(--muted); font-size: 12px; align-self: center; text-align: center; max-width: 100%; font-family: 'DM Mono', monospace; }
+    .replay-btn { background: none; border: none; cursor: pointer; color: var(--muted); padding: 0; margin-top: 7px; display: flex; align-items: center; gap: 4px; font-size: 11px; font-family: 'DM Mono', monospace; transition: color .15s; }
+    .replay-btn:hover { color: var(--accent); }
+
+    /* Speaking indicator */
+    .speaking-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); margin-left: 6px; animation: pulse 0.8s infinite; vertical-align: middle; }
+
+    /* Action cards */
+    .action-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-top: 8px; }
+    .ac-title { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; font-family: 'DM Mono', monospace; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+    .tag { padding: 2px 7px; border-radius: 5px; font-size: 10px; font-family: 'DM Mono', monospace; }
+    .tag.email { background: #1a1a2e; color: #7eb8d4; }
+    .tag.cal { background: #0e1e18; color: #5ecba1; }
+    .tag.sms { background: #1e1020; color: #c07de8; }
+    .ac-row { display: flex; justify-content: space-between; align-items: flex-start; margin: 5px 0; gap: 8px; }
+    .ac-label { color: var(--muted); font-size: 12px; flex-shrink: 0; }
+    .ac-val { color: var(--text); font-family: 'DM Mono', monospace; font-size: 11.5px; text-align: right; word-break: break-word; }
+    .ac-body { color: var(--text); font-size: 13px; margin-top: 5px; line-height: 1.5; white-space: pre-wrap; }
+    .action-btns { display: flex; gap: 8px; margin-top: 12px; }
+    .abtn { padding: 8px 16px; border-radius: 8px; font-size: 13px; font-family: 'DM Sans', sans-serif; cursor: pointer; border: none; font-weight: 500; transition: opacity .15s; }
+    .abtn.confirm { background: var(--accent); color: #0c0c0f; }
+    .abtn.cancel { background: var(--surface); border: 1px solid var(--border); color: var(--muted); }
+    .abtn:active { opacity: .75; }
+
+    /* Input */
+    #inputarea { padding: 12px 20px 20px; border-top: 1px solid var(--border); display: flex; gap: 8px; align-items: flex-end; flex-shrink: 0; }
+    #userinput { flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; font-family: 'DM Sans', sans-serif; font-size: 14px; color: var(--text); resize: none; min-height: 42px; max-height: 120px; outline: none; transition: border .15s; line-height: 1.4; -webkit-appearance: none; }
+    #userinput:focus { border-color: var(--accent); }
+    #userinput::placeholder { color: var(--muted); }
+    #sendbtn { width: 42px; height: 42px; border-radius: 10px; background: var(--accent); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: opacity .15s; }
+    #sendbtn:active { opacity: .75; }
+    #sendbtn:disabled { opacity: .35; cursor: default; }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <div id="header">
+    <div>
+      <span class="logo-name">Novela</span>
+      <span class="logo-sub">assistant</span>
+    </div>
+    <div class="hdr-btns">
+      <span id="conn-label">setup needed</span>
+      <div class="dot" id="status-dot"></div>
+      <button class="icon-btn active" id="mute-btn" onclick="toggleMute()" title="Mute / unmute voice">
+        <svg id="mute-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+          <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+          <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+        </svg>
+      </button>
+      <button class="icon-btn" onclick="showSetup()" title="Settings">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- SETUP SCREEN -->
+  <div id="setup">
+    <h2>Welcome to Novela</h2>
+
+    <!-- Step 1: Groq (AI brain) -->
+    <div class="setup-section">
+      <div class="setup-label">
+        Step 1 — AI Brain
+        <span class="badge required">required</span>
+        <span class="badge free">free</span>
+      </div>
+      <div class="setup-box">
+        <p>
+          Go to <a href="https://console.groq.com" target="_blank">console.groq.com</a> → Sign up free<br>
+          → Click <strong style="color:var(--accent)">API Keys</strong> → <strong style="color:var(--accent)">Create API Key</strong><br>
+          → Paste your key below (starts with <strong style="color:var(--accent)">gsk_</strong>)
+        </p>
+        <input class="setup-input" type="password" id="groq-key" placeholder="gsk_..." autocomplete="off" />
+      </div>
+    </div>
+
+    <hr class="divider" />
+
+    <!-- Step 2: ElevenLabs (voice) -->
+    <div class="setup-section">
+      <div class="setup-label">
+        Step 2 — ElevenLabs Voice
+        <span class="badge required">required for voice</span>
+        <span class="badge free">free tier</span>
+      </div>
+      <div class="setup-box">
+        <p>
+          Go to <a href="https://elevenlabs.io" target="_blank">elevenlabs.io</a> → Sign up free<br>
+          → Click your profile → <strong style="color:var(--accent)">API Keys</strong><br>
+          → Copy your key and paste below (starts with <strong style="color:var(--accent)">sk_</strong>)
+        </p>
+        <input class="setup-input" type="password" id="el-key" placeholder="sk_..." autocomplete="off" />
+      </div>
+      <p class="setup-note" style="margin-top:6px">No ElevenLabs key? Leave blank — Novela will use your device's built-in voice instead.</p>
+    </div>
+
+    <button class="setup-btn" onclick="saveKeys()">Launch Novela</button>
+    <p class="setup-note">Both keys are saved on this device only. Never shared.</p>
+  </div>
+
+  <!-- MAIN APP -->
+  <div id="main">
+    <div id="quickbar">
+      <button class="qbtn" onclick="quickAction('Compose an email')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg>
+        Compose email
+      </button>
+      <button class="qbtn" onclick="quickAction('Schedule an appointment')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Add appointment
+      </button>
+      <button class="qbtn" onclick="quickAction('Draft a text message')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        Draft text
+      </button>
+      <button class="qbtn" onclick="quickAction('What do I have scheduled today?')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Today's schedule
+      </button>
+    </div>
+
+    <div id="chat">
+      <div class="msg system">I'm Novela — tell me what to send, schedule, or draft.</div>
+    </div>
+
+    <div id="inputarea">
+      <textarea id="userinput" placeholder="e.g. 'Schedule dinner with Alex Saturday at 7pm'" rows="1"
+        onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+      <button id="sendbtn" onclick="sendMessage()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0c0c0f" stroke-width="2.5">
+          <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+</div>
+<script>
+// ── Constants ─────────────────────────────────────────────────────
+const GROQ_URL   = 'https://api.groq.com/openai/v1/chat/completions';
+const GROQ_MODEL = 'llama-3.3-70b-versatile';
+// ElevenLabs voice ID: "Dorothy" — warm, natural American female voice (free tier)
+// Other good free options: Rachel=21m00Tcm4TlvDq8ikWAM, Dorothy=ThT5KcBeYPX3keUQqHPh
+const EL_VOICE_ID = 'ThT5KcBeYPX3keUQqHPh';
+const EL_TTS_URL  = `https://api.elevenlabs.io/v1/text-to-speech/${EL_VOICE_ID}`;
+
+const SYSTEM_PROMPT = `You are Novela, an elegant and precise personal AI assistant.
+
+You help with:
+1. Composing emails (extract: to, subject, body)
+2. Scheduling calendar events (extract: title, date, time, duration, attendees)
+3. Drafting text messages (extract: to_name, body)
+4. General questions and assistance
+
+Respond ONLY with valid JSON — no markdown, no code fences, no extra text:
+{
+  "reply": "your concise 1-2 sentence response",
+  "action": null,
+  "needs_info": null
+}
+
+When an action is needed:
+{
+  "reply": "brief confirmation",
+  "action": {
+    "type": "email" | "calendar" | "sms",
+    "data": { ... }
+  },
+  "needs_info": null
+}
+
+Email data: { to, subject, body }
+Calendar data: { title, date (YYYY-MM-DD), time (HH:MM), duration, attendees }
+SMS data: { to_name, body }
+
+Today is ${new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}.
+Be warm, concise, and refined. Never invent contact details.`;
+
+// ── State ─────────────────────────────────────────────────────────
+let history      = [];
+let pendingAction= null;
+let groqKey      = '';
+let elKey        = '';
+let isMuted      = false;
+let currentAudio = null;
+let lastText     = '';
+
+// ── Init ──────────────────────────────────────────────────────────
+function init() {
+  groqKey = localStorage.getItem('novela_groq_key') || '';
+  elKey   = localStorage.getItem('novela_el_key')   || '';
+  isMuted = localStorage.getItem('novela_muted') === 'true';
+  updateMuteIcon();
+  if (groqKey) {
+    showMain();
+  }
+}
+
+function saveKeys() {
+  const g = document.getElementById('groq-key').value.trim();
+  const e = document.getElementById('el-key').value.trim();
+  if (!g || g.length < 10) {
+    alert('Please enter your Groq API key (starts with gsk_). It is required for Novela to work.');
+    return;
+  }
+  localStorage.setItem('novela_groq_key', g);
+  if (e) localStorage.setItem('novela_el_key', e);
+  groqKey = g;
+  elKey   = e;
+  showMain();
+}
+
+function showSetup() {
+  document.getElementById('setup').style.display = 'flex';
+  document.getElementById('main').style.display  = 'none';
+  document.getElementById('groq-key').value = groqKey;
+  document.getElementById('el-key').value   = elKey;
+}
+
+function showMain() {
+  document.getElementById('setup').style.display = 'none';
+  document.getElementById('main').style.display  = 'flex';
+  const hasVoice = !!elKey;
+  document.getElementById('conn-label').textContent = hasVoice ? 'Groq · ElevenLabs' : 'Groq · device voice';
+  document.getElementById('status-dot').classList.add('on');
+  setTimeout(() => speak("Hello, I'm Novela. How can I help you today?"), 800);
+}
+
+// ── Voice: ElevenLabs + fallback ──────────────────────────────────
+async function speak(text) {
+  if (isMuted) return;
+  const clean = text.replace(/<[^>]*>/g,'').replace(/\s+/g,' ').trim();
+  if (!clean) return;
+  lastText = clean;
+
+  if (elKey) {
+    try {
+      await speakElevenLabs(clean);
+      return;
+    } catch(e) {
+      console.warn('ElevenLabs failed, falling back to browser voice:', e.message);
+    }
+  }
+  speakBrowser(clean);
+}
+
+async function speakElevenLabs(text) {
+  if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+  const resp = await fetch(EL_TTS_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'xi-api-key': elKey
+    },
+    body: JSON.stringify({
+      text: text,
+      model_id: 'eleven_turbo_v2',
+      voice_settings: {
+        stability: 0.5,
+        similarity_boost: 0.85,
+        style: 0.3,
+        use_speaker_boost: true
+      }
+    })
+  });
+  if (!resp.ok) throw new Error(`ElevenLabs error ${resp.status}`);
+  const blob = await resp.blob();
+  const url  = URL.createObjectURL(blob);
+  currentAudio = new Audio(url);
+  currentAudio.onended = () => { URL.revokeObjectURL(url); currentAudio = null; };
+  currentAudio.play();
+}
+
+function speakBrowser(text) {
+  if (!window.speechSynthesis) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  const voices = speechSynthesis.getVoices();
+  const preferred = ['Zira','Ava','Samantha','Moira','Google US English','Microsoft Aria','Karen','Victoria','Allison'];
+  let pick = voices.find(v => v.lang.startsWith('en') && preferred.some(p => v.name.includes(p)));
+  if (!pick) pick = voices.find(v => v.lang.startsWith('en-US'));
+  if (pick) u.voice = pick;
+  u.rate = 0.93; u.pitch = 1.05; u.volume = 1.0;
+  speechSynthesis.speak(u);
+}
+
+function replayLast() {
+  if (!lastText) return;
+  if (elKey && !isMuted) {
+    speakElevenLabs(lastText).catch(() => speakBrowser(lastText));
+  } else {
+    speakBrowser(lastText);
+  }
+}
+
+function toggleMute() {
+  isMuted = !isMuted;
+  localStorage.setItem('novela_muted', isMuted);
+  if (isMuted) {
+    if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+    if (window.speechSynthesis) speechSynthesis.cancel();
+  }
+  updateMuteIcon();
+}
+
+function updateMuteIcon() {
+  const icon = document.getElementById('mute-icon');
+  const btn  = document.getElementById('mute-btn');
+  if (!icon) return;
+  if (isMuted) {
+    icon.innerHTML = `<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>`;
+    btn.classList.remove('active');
+  } else {
+    icon.innerHTML = `<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>`;
+    btn.classList.add('active');
+  }
+}
+
+// ── Chat helpers ──────────────────────────────────────────────────
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+}
+
+function quickAction(text) {
+  document.getElementById('userinput').value = text;
+  sendMessage();
+}
+
+function addMsg(html, role) {
+  const chat = document.getElementById('chat');
+  const d = document.createElement('div');
+  d.className = 'msg ' + role;
+  const isRealAI = role === 'ai' && !html.includes('Thinking') && !html.includes('Working');
+  d.innerHTML = html;
+  if (isRealAI) {
+    const rb = document.createElement('button');
+    rb.className = 'replay-btn';
+    rb.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg> replay`;
+    rb.onclick = replayLast;
+    d.appendChild(rb);
+  }
+  chat.appendChild(d);
+  chat.scrollTop = chat.scrollHeight;
+  if (isRealAI) setTimeout(() => speak(html), 150);
+  return d;
+}
+
+// ── Action cards ──────────────────────────────────────────────────
+function showActionCard(action) {
+  const { type, data } = action;
+  const labels  = { email: 'Email draft', calendar: 'Calendar event', sms: 'Text message' };
+  const tagClass = { email: 'email', calendar: 'cal', sms: 'sms' }[type] || '';
+  const tagText  = { email: 'Gmail', calendar: 'GCal', sms: 'SMS' }[type] || type;
+  let rows = '';
+  if (type === 'email') {
+    rows = `<div class="ac-row"><span class="ac-label">To</span><span class="ac-val">${data.to||'—'}</span></div>
+    <div class="ac-row"><span class="ac-label">Subject</span><span class="ac-val">${data.subject||'—'}</span></div>
+    <div class="ac-label" style="margin-top:6px">Message</div><div class="ac-body">${data.body||''}</div>`;
+  } else if (type === 'calendar') {
+    rows = `<div class="ac-row"><span class="ac-label">Event</span><span class="ac-val">${data.title||'—'}</span></div>
+    <div class="ac-row"><span class="ac-label">Date</span><span class="ac-val">${data.date||'—'}</span></div>
+    <div class="ac-row"><span class="ac-label">Time</span><span class="ac-val">${data.time||'—'}</span></div>
+    ${data.duration?`<div class="ac-row"><span class="ac-label">Duration</span><span class="ac-val">${data.duration}</span></div>`:''}
+    ${data.attendees?`<div class="ac-row"><span class="ac-label">With</span><span class="ac-val">${data.attendees}</span></div>`:''}`;
+  } else if (type === 'sms') {
+    rows = `<div class="ac-row"><span class="ac-label">To</span><span class="ac-val">${data.to_name||'—'}</span></div>
+    <div class="ac-label" style="margin-top:6px">Message</div><div class="ac-body">${data.body||''}</div>`;
+  }
+  const wrap = document.createElement('div');
+  wrap.className = 'msg ai';
+  wrap.style.maxWidth = '96%';
+  wrap.innerHTML = `<div class="action-card">
+    <div class="ac-title">${labels[type]||type}<span class="tag ${tagClass}">${tagText}</span></div>
+    ${rows}
+    <div class="action-btns">
+      <button class="abtn confirm" onclick="confirmAction(this)">Confirm &amp; open</button>
+      <button class="abtn cancel" onclick="cancelAction(this)">Edit</button>
+    </div>
+  </div>`;
+  const chat = document.getElementById('chat');
+  chat.appendChild(wrap);
+  chat.scrollTop = chat.scrollHeight;
+  pendingAction = { action, wrap };
+}
+
+function confirmAction(btn) {
+  btn.closest('.action-card').querySelector('.action-btns').innerHTML =
+    `<span style="font-size:12px;color:var(--green);font-family:'DM Mono',monospace">opening...</span>`;
+  setTimeout(() => executeAction(pendingAction.action), 300);
+}
+
+function cancelAction(btn) {
+  btn.closest('.msg').remove();
+  addMsg('Of course — what would you like to change?', 'ai');
+  pendingAction = null;
+}
+
+function executeAction(action) {
+  const { type, data } = action;
+  if (type === 'email') {
+    const url = `https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(data.to||'')}&su=${encodeURIComponent(data.subject||'')}&body=${encodeURIComponent(data.body||'')}`;
+    window.open(url, '_blank');
+    addMsg(`Gmail is opening with your email to ${data.to} pre-filled. Just hit send!`, 'ai');
+  } else if (type === 'calendar') {
+    const d = (data.date||'').replace(/-/g,'');
+    const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(data.title||'')}&dates=${d}/${d}&details=${encodeURIComponent('Created by Novela')}`;
+    window.open(url, '_blank');
+    addMsg(`Google Calendar is opening with "${data.title}" pre-filled. Just save it!`, 'ai');
+  } else if (type === 'sms') {
+    window.location.href = `sms:?body=${encodeURIComponent(data.body||'')}`;
+    addMsg(`Your Messages app should open with the text ready to send to ${data.to_name}.`, 'ai');
+  }
+  pendingAction = null;
+}
+
+// ── Main chat ─────────────────────────────────────────────────────
+async function sendMessage() {
+  const input = document.getElementById('userinput');
+  const text  = input.value.trim();
+  if (!text) return;
+  input.value = ''; input.style.height = 'auto';
+  document.getElementById('sendbtn').disabled = true;
+  addMsg(text, 'user');
+  const loadMsg = addMsg('<em style="color:var(--muted);font-family:\'Cormorant Garamond\',serif;font-size:15px">Thinking...</em>', 'ai');
+  history.push({ role: 'user', content: text });
+  try {
+    const resp = await fetch(GROQ_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${groqKey}` },
+      body: JSON.stringify({
+        model: GROQ_MODEL,
+        max_tokens: 1000,
+        messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...history]
+      })
+    });
+    const d = await resp.json();
+    if (d.error) throw new Error(d.error.message);
+    const raw = d.choices[0].message.content;
+    let parsed;
+    try { parsed = JSON.parse(raw.replace(/```json|```/g,'').trim()); }
+    catch { parsed = { reply: raw, action: null }; }
+    loadMsg.remove();
+    addMsg(parsed.reply + (parsed.needs_info
+      ? `<br><br><span style="color:var(--amber);font-size:12px;font-family:'DM Mono',monospace">${parsed.needs_info}</span>`
+      : ''), 'ai');
+    history.push({ role: 'assistant', content: raw });
+    if (parsed.action) showActionCard(parsed.action);
+  } catch(e) {
+    loadMsg.remove();
+    addMsg(`Error: ${e.message}. Tap settings to check your keys.`, 'ai');
+  }
+  document.getElementById('sendbtn').disabled = false;
+}
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+init();
+</script>
+</body>
+</html>
